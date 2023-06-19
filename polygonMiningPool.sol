@@ -11,9 +11,10 @@ contract MudMiningPool {
     
     //mining DAPP address should be set at the contract deployment time to the correct one
     //this is the address that MUD Mining DAPP used to interact with the daily settlement function
+    //the private key of this address will be managed in reliable and high secure way by the DAO
     address constant miningDappAddress = address(0x2de5A24f9A5Ac86F87C37ab5b0Fdd7031E1015A3);   
     uint constant secPerDay = 86400;
-    uint256 constant poolInfoMappingAmountLimit = 433593226348922;//4.5e14;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
+    uint256 constant poolInfoMappingAmountLimit = 433593226348922;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
 
     MetaUserDAOToken token;
     address immutable admin;
@@ -25,7 +26,7 @@ contract MudMiningPool {
     bool poolInfoMappingFinished;
     
     uint256 _currentSettlementTimestamp;
-    uint256 _currentSettlementBatchNo;
+    uint256 _currentSettlementBatchNo;//this is to insure there is no duplicated settlement batch 
     uint256 _totalSettlementAmount;    
     uint256 private _totalFreeAmount;
     mapping (address => uint256) private _minedToken;
@@ -45,7 +46,8 @@ contract MudMiningPool {
         lastHalvingTime = 1671518435; //within 4 years, so it should be the same as mining start time of eth mainnet
         lastSettlementTime = 1686647783;//need to set once the eth mainnet token was frozen
     }
-    
+    //Lock the MUDs in the contract the amount will be exactly from the eth mainnet contract once the transfer of MUD token
+    // of the eth mainnet was frozen.
     function poolInfoMappingDeposit(uint256 amount) external returns (uint256, uint256) {
         require(msg.sender == admin, "only admin allowed!");
         require(amount == poolInfoMappingAmountLimit, "Invalid amount !"); 
@@ -58,39 +60,32 @@ contract MudMiningPool {
         return (amount, token.balanceOf(address(this)));
     }
 
+    //mapping the mined data according to the eth mainnet once the MUD in eth mainner was frozen.
     function poolInfoMapping(address[] calldata addressArray, uint256[] calldata balanceArray) external returns (bool) {
         require(msg.sender == admin, "Only admin allowed!");
         require(!poolInfoMappingFinished, "Pool mapping finished already");
         require(addressArray.length == balanceArray.length, "Array length not match!");
 
+        uint256 localTotalFreeAmount = _totalFreeAmount;//to save gas
         for (uint i = 0; i < addressArray.length; i++) { 
-            _totalFreeAmount = _totalFreeAmount + balanceArray[i];
-            require(_totalFreeAmount <= poolInfoMappingAmountLimit, "_totalFreeAmount > limit");
+            localTotalFreeAmount = localTotalFreeAmount + balanceArray[i];
+            require(localTotalFreeAmount <= poolInfoMappingAmountLimit, "_totalFreeAmount > limit");
             _minedToken[addressArray[i]] = balanceArray[i];
         }
+        _totalFreeAmount = localTotalFreeAmount; //to save gas
 
         emit poolinfomapping(true);
         return true;
     }
 
+    //mark the migrating from eth mainnet is accomplished
     function poolInfoMappingFinalized() external returns (bool){
         require(msg.sender == admin, "Only admin allowed!");
         poolInfoMappingFinished = true;
         emit poolinfomappingfinished(true);
 
         return true;
-    }
-    
-    /*
-    function miningStart() external returns (uint) {
-        require(msg.sender == miningDappAddress, "only dapp admin allowed!"); //only dapp address could start miningDappAddress
-        require(lastHalvingTime == 0, "only start once!");
-        
-        lastHalvingTime = block.timestamp;
-        lastSettlementTime = block.timestamp; //mining start time should be the last settlement time
-        emit miningstart(lastHalvingTime);
-        return lastHalvingTime;
-    }*/
+    }  
     
     /*
         Due to the max gas limit of one block, the settlement should seperated to several batches.

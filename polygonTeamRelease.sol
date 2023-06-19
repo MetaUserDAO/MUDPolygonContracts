@@ -12,8 +12,7 @@ contract MudTeamReleaseBank {
     uint immutable teamLockingStart; 
     address immutable admin;
     uint256 constant teamMemberBalance = 1.6e14;//160000000000000; //160000000 MUD
-    uint256 constant dailyRate = 92590; //0.0009259 daily release rate 0.09259%
-    uint constant secPerYear = 31536000;
+    uint256 constant dailyRate = 92590; //0.0009259 daily release rate 0.09259%    
     uint constant secPerDay = 86400;
     uint256 private _icoDepositTotal;
     bool private _icoFinished;
@@ -41,7 +40,7 @@ contract MudTeamReleaseBank {
     
     
     //only the contractor creator could 
-    /* lock the team MUD coins to the contract and start to release after 365 days in daily release rate
+    /* lock the team MUD coins to the contract and start to release after Date and time (GMT): Monday, 16 December 2024 00:00:00 plus one second in daily release rate
      * parameters: 
      *    teamMemberAddress : team member wallet address
      *    amount: amount of MUD to be locked
@@ -56,7 +55,7 @@ contract MudTeamReleaseBank {
         require(amount + _icoDepositTotal <= teamMemberBalance, "amount overflow!");
         require(!bank[teamMemberAddress].locked && bank[teamMemberAddress].balance == 0, "already locked or balance is not 0.");
          
-        bank[teamMemberAddress].lastTime = 1734307201;//Date and time (GMT): Monday, 16 December 2024 00:00:00 plus one second //teamLockingStart + secPerYear + 1;
+        bank[teamMemberAddress].lastTime = 1734307201;//Date and time (GMT): Monday, 16 December 2024 00:00:00 plus one second
         bank[teamMemberAddress].balance = amount;
         bank[teamMemberAddress].dailyReleaseAmount = amount * dailyRate / 1e8; //amount * dailyRate / 100000000;
         bank[teamMemberAddress].locked = true;

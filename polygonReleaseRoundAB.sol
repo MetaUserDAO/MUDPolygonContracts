@@ -36,7 +36,7 @@ contract MudABRoundReleaseBank {
     }
     
     
-    /*only the contractor creator could deposit ico to investor
+    /*only the contractor creator could deposit mapping to investor
     * map the MUD AB round from eth mainnet contract 
     * parameters:
     *     addressArray: Angel round investor addresses 

@@ -36,7 +36,7 @@ contract MudMiningEscrow {
         token = UtilityFunctions.getMudToken();
     }
     
-
+    //start a mining order
     function deposit(uint256 amount, uint8 duration) external returns (uint256) {
         require(msg.sender != admin, "Not admin !");
         require(duration == 3 || duration == 6 || duration == 12, "Only 3,6,12 allowed !");
@@ -103,6 +103,7 @@ contract MudMiningEscrow {
         return (depositAddress, totalAmount);
     }
     
+    //break a mining order
     function breakContract(uint256 contractId) external returns(uint256, uint256) {
         require(msg.sender != admin, "Not admin !");
         require(contractId > 0, "contractId should > 0 !");
@@ -130,7 +131,7 @@ contract MudMiningEscrow {
         }
     }
     
-    
+    //check total matured order amount and inmature amount
     function checkBalance(address addressIn) external view returns (uint256, uint256) {
         require(addressIn != address(0), "Blackhole address not allowed!");
         
@@ -164,6 +165,7 @@ contract MudMiningEscrow {
         return (freeAmount, lockedAmount);
     }
     
+    //withdraw matured order amount
     function Withdraw() external returns (uint256, uint256) {
         require(msg.sender != admin, "Admin not allowed !");
         require(_cursors[msg.sender].start > 0, "No mining contracts.");
@@ -203,6 +205,7 @@ contract MudMiningEscrow {
         return (freeAmount, lockedAmount);
     }
 
+    //get order information base on orderId
     function getDepositOrderInfo(address addressToCheck, uint256 orderId) external view returns (uint256, uint256, uint256) {
         require(msg.sender == admin, "Not admin !");
         require(addressToCheck != address(0), "Blackhole address not allowed!");               
