@@ -50,12 +50,13 @@ contract MudAngelRoundReleaseBank {
         require(!_depositMappingFinished, "Deposit mapping finished!");
         require(addressArray.length == balanceArray.length && icoBalanceArray.length == balanceArray.length && balanceArray.length == lasttimeArray.length, "Array length not match");
      
-        //iterate through the array
-        uint256 localDepositMappingTotal = _depositMappingTotal;//to save gas
+        //iterate through the array        
+        uint256 totalDepositToBeTransferred;
+
         for (uint i = 0; i < addressArray.length; i++) {
             require(balanceArray[i] > 0, "Mapped balance should > 0");   
             require(icoBalanceArray[i] >= balanceArray[i], "Incorrect balance!");                       
-            require(balanceArray[i] + localDepositMappingTotal <= angelRoundLimit, "_depositMappingTotal out of the ico limit!"); // > daily limit, trasaction failed.
+            require(balanceArray[i] + _depositMappingTotal + totalDepositToBeTransferred <= angelRoundLimit, "_depositMappingTotal out of the ico limit!"); // > daily limit, trasaction failed.
             require(lasttimeArray[i] > 1671200795, "last releaseToken() timestamp < eth ico deposit time! ");//should > ico deposit time on eth main chain
             
             address investorAddress = addressArray[i];
@@ -65,12 +66,11 @@ contract MudAngelRoundReleaseBank {
             bank[investorAddress].lastTime = lasttimeArray[i];
             bank[investorAddress].balance = balanceArray[i];
             bank[investorAddress].dailyReleaseAmount = icoBalanceArray[i] * dailyRate / 1e8; //amount * dailyRate / 100000000;
-            bank[investorAddress].locked = true;
-            localDepositMappingTotal = localDepositMappingTotal + balanceArray[i];
-
-            require(token.transferFrom(msg.sender, address(this), balanceArray[i]), "transferFrom failed!"); //check the return value, it should be true           
-        }
-        _depositMappingTotal = localDepositMappingTotal;//to save gas
+            bank[investorAddress].locked = true;            
+            totalDepositToBeTransferred = totalDepositToBeTransferred + balanceArray[i];      
+        }        
+        require(token.transferFrom(msg.sender, address(this), totalDepositToBeTransferred), "transferFrom failed!"); //check the return value, it should be true
+        _depositMappingTotal = _depositMappingTotal + totalDepositToBeTransferred;//to save gas
 
         emit depositMappingEvt(block.timestamp, _depositMappingTotal);
         return (block.timestamp, _depositMappingTotal);

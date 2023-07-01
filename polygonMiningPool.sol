@@ -11,10 +11,9 @@ contract MudMiningPool {
     
     //mining DAPP address should be set at the contract deployment time to the correct one
     //this is the address that MUD Mining DAPP used to interact with the daily settlement function
-    //the private key of this address will be managed in reliable and high secure way by the DAO
     address constant miningDappAddress = address(0x2de5A24f9A5Ac86F87C37ab5b0Fdd7031E1015A3);   
     uint constant secPerDay = 86400;
-    uint256 constant poolInfoMappingAmountLimit = 433593226348922;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
+    uint256 constant poolInfoMappingAmountLimit = 433593226348922;//4.5e14;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
 
     MetaUserDAOToken token;
     address immutable admin;
@@ -26,7 +25,7 @@ contract MudMiningPool {
     bool poolInfoMappingFinished;
     
     uint256 _currentSettlementTimestamp;
-    uint256 _currentSettlementBatchNo;//this is to insure there is no duplicated settlement batch 
+    uint256 _currentSettlementBatchNo;
     uint256 _totalSettlementAmount;    
     uint256 private _totalFreeAmount;
     mapping (address => uint256) private _minedToken;
@@ -34,7 +33,6 @@ contract MudMiningPool {
     event poolmappingdeposit(uint256 amount, uint256 balance);
     event poolinfomapping(bool done);
     event poolinfomappingfinished(bool finished);
-    event miningstart(uint lastHalvingTime);
     event settlementEvt(uint256 batchNumber, uint256 burntAmount, uint256 minedAmount, uint256 totalfreeamount);
     event withdrawevt(uint256 amount);
 
@@ -46,8 +44,7 @@ contract MudMiningPool {
         lastHalvingTime = 1671518435; //within 4 years, so it should be the same as mining start time of eth mainnet
         lastSettlementTime = 1686647783;//need to set once the eth mainnet token was frozen
     }
-    //Lock the MUDs in the contract the amount will be exactly from the eth mainnet contract once the transfer of MUD token
-    // of the eth mainnet was frozen.
+    
     function poolInfoMappingDeposit(uint256 amount) external returns (uint256, uint256) {
         require(msg.sender == admin, "only admin allowed!");
         require(amount == poolInfoMappingAmountLimit, "Invalid amount !"); 
@@ -60,7 +57,6 @@ contract MudMiningPool {
         return (amount, token.balanceOf(address(this)));
     }
 
-    //mapping the mined data according to the eth mainnet once the MUD in eth mainner was frozen.
     function poolInfoMapping(address[] calldata addressArray, uint256[] calldata balanceArray) external returns (bool) {
         require(msg.sender == admin, "Only admin allowed!");
         require(!poolInfoMappingFinished, "Pool mapping finished already");
@@ -69,23 +65,34 @@ contract MudMiningPool {
         uint256 localTotalFreeAmount = _totalFreeAmount;//to save gas
         for (uint i = 0; i < addressArray.length; i++) { 
             localTotalFreeAmount = localTotalFreeAmount + balanceArray[i];
+            require(addressArray[i] != admin && addressArray[i] != miningDappAddress, "admin and dapp acc not allowed!");
             require(localTotalFreeAmount <= poolInfoMappingAmountLimit, "_totalFreeAmount > limit");
             _minedToken[addressArray[i]] = balanceArray[i];
         }
         _totalFreeAmount = localTotalFreeAmount; //to save gas
-
+        
         emit poolinfomapping(true);
         return true;
     }
 
-    //mark the migrating from eth mainnet is accomplished
     function poolInfoMappingFinalized() external returns (bool){
         require(msg.sender == admin, "Only admin allowed!");
         poolInfoMappingFinished = true;
         emit poolinfomappingfinished(true);
 
         return true;
-    }  
+    }
+    
+    /*
+    function miningStart() external returns (uint) {
+        require(msg.sender == miningDappAddress, "only dapp admin allowed!"); //only dapp address could start miningDappAddress
+        require(lastHalvingTime == 0, "only start once!");
+        
+        lastHalvingTime = block.timestamp;
+        lastSettlementTime = block.timestamp; //mining start time should be the last settlement time
+        emit miningstart(lastHalvingTime);
+        return lastHalvingTime;
+    }*/
     
     /*
         Due to the max gas limit of one block, the settlement should seperated to several batches.
@@ -104,7 +111,7 @@ contract MudMiningPool {
 
     function miningSettlement(uint256 batchNumber, uint settlementTime, address[] calldata addressArray, uint256[] calldata balanceArray) external {
         require(msg.sender == miningDappAddress, "only dapp admin allowed!");
-        require(lastHalvingTime > 0, "mining not started !");
+        //require(lastHalvingTime > 0, "mining not started !");
         require(addressArray.length == balanceArray.length, "Array length not match");
         require(settlementTime == lastSettlementTime + secPerDay * settlementPeriod, "Settlement time not match !");
         require(settlementTime <= block.timestamp, "settlementTime should <= block time!");
@@ -144,7 +151,7 @@ contract MudMiningPool {
         uint256 localTotalSettlementAmount = _totalSettlementAmount;//to save gas
         for (uint i = 0; i < addressArray.length; i++) {
             require(addressArray[i] != miningDappAddress && addressArray[i] != admin && addressArray[i] != address(0), "invalid address");
-            require(balanceArray[i] > 0);
+            require(balanceArray[i] > 0, "Settlement balance should > 0 !");
         
             localTotalSettlementAmount = localTotalSettlementAmount + balanceArray[i];
             
@@ -182,7 +189,7 @@ contract MudMiningPool {
             }
             emit settlementEvt(batchNumber, amountToBurn, _totalSettlementAmount, _totalFreeAmount); 
             _totalSettlementAmount = 0; //clear for next settlement.
-            _currentSettlementTimestamp = 0; //clear time stamp
+            _currentSettlementTimestamp = 0; //cl        require(!_frozen, "Freezed for mainnet mapping !");ear time stamp
                       
         } else {
             emit settlementEvt(batchNumber, 0, _totalSettlementAmount, _totalFreeAmount); 
@@ -193,7 +200,7 @@ contract MudMiningPool {
     function checkBalance(address addressIn) external view returns (uint256) {
         require(addressIn != address(0), "Blackhole address not allowed!");
         require(msg.sender != miningDappAddress,"Dapp acc not allowed!");
-        require(lastHalvingTime > 0, "mining not started !");
+        //require(lastHalvingTime > 0, "mining not started !");
         
         address addressToCheck = msg.sender;
         
@@ -215,7 +222,7 @@ contract MudMiningPool {
     //withdraw() is banned during settlement period
     function withdraw() external returns (uint256) {
         require(msg.sender != admin && msg.sender != miningDappAddress,"admin and dapp acc not allowed!");
-        require(lastHalvingTime > 0, "mining not started !");
+        //require(lastHalvingTime > 0, "mining not started !");
         require(_minedToken[msg.sender] > 0, "No token available !");
         require(_currentSettlementTimestamp == 0, "Withdraw banned in settlement period!");
         

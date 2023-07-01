@@ -25,11 +25,13 @@ contract MudMiningEscrow {
         
     MetaUserDAOToken token;
     address immutable admin;
+    bool private _depositMappingFinished;
 
     event depositMappingEvt(address, uint256);
     event depositEvt(uint256 depositId);
     event breakContractEvt(uint256 burnAmount, uint256 amountLeft);
     event withdrawEvt(uint256 freeAmount, uint256 lockedAmount);
+    event depositmappingfinalized(string mappingFinalized);
     
     constructor()  {
         admin = address(msg.sender);
@@ -39,6 +41,7 @@ contract MudMiningEscrow {
     //start a mining order
     function deposit(uint256 amount, uint8 duration) external returns (uint256) {
         require(msg.sender != admin, "Not admin !");
+        require(_depositMappingFinished, "Wait until deposit mapping finished !");
         require(duration == 3 || duration == 6 || duration == 12, "Only 3,6,12 allowed !");
         require(amount > 0, "amount should > 0 !");
         
@@ -66,6 +69,7 @@ contract MudMiningEscrow {
     //mapping the existing deposit orders from ethereum main chain
     function depositMapping(address depositAddress, uint256[] calldata orderIdArray, uint[] calldata starttimeArray, uint[] calldata endtimeArray, uint256[] calldata amountArray) external returns (address, uint256) {
         require(msg.sender == admin, "Only admin allowed!");
+        require(!_depositMappingFinished, "Deposit mapping finished already!");
         require(depositAddress != admin && depositAddress != address(0), "Invalid address");
         require(orderIdArray.length == starttimeArray.length && starttimeArray.length == endtimeArray.length && starttimeArray.length == amountArray.length, "Array length not match");  
         
@@ -105,6 +109,7 @@ contract MudMiningEscrow {
     
     //break a mining order
     function breakContract(uint256 contractId) external returns(uint256, uint256) {
+        require(_depositMappingFinished, "Wait until deposit mapping finished !");
         require(msg.sender != admin, "Not admin !");
         require(contractId > 0, "contractId should > 0 !");
         require(contractId >= _cursors[msg.sender].start && contractId <= _cursors[msg.sender].end, "Invalid contractId!");
@@ -122,9 +127,8 @@ contract MudMiningEscrow {
             uint256 burnAmount = _logbook[msg.sender][contractId].amount / 5;
             _logbook[msg.sender][contractId].amount = _logbook[msg.sender][contractId].amount - burnAmount;
             _logbook[msg.sender][contractId].endTime = block.timestamp + 86400; //86400
-
-            require(token.increaseAllowance(address(this), burnAmount), "increaseAllowance failed!");
-            token.burnFrom(address(this), burnAmount);
+           
+            token.burn(burnAmount);
 
             emit breakContractEvt(burnAmount, _logbook[msg.sender][contractId].amount);   
             return (burnAmount, _logbook[msg.sender][contractId].amount);  
@@ -133,6 +137,7 @@ contract MudMiningEscrow {
     
     //check total matured order amount and inmature amount
     function checkBalance(address addressIn) external view returns (uint256, uint256) {
+        require(_depositMappingFinished, "Wait until deposit mapping finished !");
         require(addressIn != address(0), "Blackhole address not allowed!");
         
         address addressToCheck = msg.sender;
@@ -167,6 +172,7 @@ contract MudMiningEscrow {
     
     //withdraw matured order amount
     function Withdraw() external returns (uint256, uint256) {
+        require(_depositMappingFinished, "Wait until deposit mapping finished !");
         require(msg.sender != admin, "Admin not allowed !");
         require(_cursors[msg.sender].start > 0, "No mining contracts.");
         require(_cursors[msg.sender].start <= _cursors[msg.sender].end, "Invalid mining start,end pointers!");
@@ -207,6 +213,7 @@ contract MudMiningEscrow {
 
     //get order information base on orderId
     function getDepositOrderInfo(address addressToCheck, uint256 orderId) external view returns (uint256, uint256, uint256) {
+        require(_depositMappingFinished, "Wait until deposit mapping finished !");
         require(msg.sender == admin, "Not admin !");
         require(addressToCheck != address(0), "Blackhole address not allowed!");               
         require(_cursors[addressToCheck].start <= _cursors[addressToCheck].end, "Nothing in the mining logbook!");
@@ -219,5 +226,13 @@ contract MudMiningEscrow {
         return (_logbook[addressToCheck][orderId].startTime, _logbook[addressToCheck][orderId].endTime, _logbook[addressToCheck][orderId].amount);
    }
    
+    //mark the depositMapping finished flag, stop depositMapping any more and return the _depositMappingTotal.    
+    function depositMappingFinalised() external {
+        require(msg.sender == admin, "Not contractor owner!");
+        require(!_depositMappingFinished, "Deposit mapping finished already!");
+        
+        _depositMappingFinished = true;
+        emit depositmappingfinalized("Deposit mapping finalized !");       
+    } 
 }
 

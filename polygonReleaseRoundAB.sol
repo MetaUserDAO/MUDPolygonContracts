@@ -40,7 +40,7 @@ contract MudABRoundReleaseBank {
     * map the MUD AB round from eth mainnet contract 
     * parameters:
     *     addressArray: Angel round investor addresses 
-    *     icoBalanceArray: array of amount of MUD coin received from Angel round
+    *     icoBalanceArray: array of amount of MUD coin received from AB round
     *     balanceArray: array of amount of MUD coin mapped from eth mainnet contract
     *     lasttimeArray: lasttime mapped from eth mainnet contract
     * return:  (block time, total coins deposited in the contract)   
@@ -51,11 +51,12 @@ contract MudABRoundReleaseBank {
         require(addressArray.length == balanceArray.length && icoBalanceArray.length == balanceArray.length && balanceArray.length == lasttimeArray.length, "Array length not match");        
 
         //iterate through the array
-        uint256 localDepositMappingTotal = _depositMappingTotal;//to save gas
+        uint256 totalDepositToBeTransferred;
+        
         for (uint i = 0; i < addressArray.length; i++) {
             require(balanceArray[i] > 0, "Mapped balance should > 0");        
             require(icoBalanceArray[i] >= balanceArray[i], "Incorrect balance!");    
-            require(balanceArray[i] + localDepositMappingTotal <= ABRoundLimit, "_depositMappingTotal out of the ico limit!");              
+            require(balanceArray[i] +  _depositMappingTotal + totalDepositToBeTransferred <= ABRoundLimit, "_depositMappingTotal out of the ico limit!");              
             require(lasttimeArray[i] >= 1671200891, "last releaseToken() timestamp < eth ico deposit time! ");//should > ico deposit time on eth main chain
             
 
@@ -67,11 +68,10 @@ contract MudABRoundReleaseBank {
             bank[investorAddress].balance = balanceArray[i];
             bank[investorAddress].dailyReleaseAmount = icoBalanceArray[i] * dailyRate / 1e8; //amount * dailyRate / 100000000;
             bank[investorAddress].locked = true;
-            localDepositMappingTotal = localDepositMappingTotal + balanceArray[i];
-
-            require(token.transferFrom(msg.sender, address(this), balanceArray[i]), "transferFrom failed!"); //check the return value, it should be true           
+            totalDepositToBeTransferred = totalDepositToBeTransferred + balanceArray[i];
         }
-        _depositMappingTotal = localDepositMappingTotal;//to save gas
+        require(token.transferFrom(msg.sender, address(this), totalDepositToBeTransferred), "transferFrom failed!"); //check the return value, it should be true
+        _depositMappingTotal = _depositMappingTotal + totalDepositToBeTransferred;//to save gas
         
         emit depositMappingEvt(block.timestamp, _depositMappingTotal);
         return (block.timestamp, _depositMappingTotal);
@@ -91,7 +91,7 @@ contract MudABRoundReleaseBank {
             addressToCheck = addressIn;
         }
 
-        require(block.timestamp > bank[addressToCheck].lastTime, "now time < lastTime");
+        //require(block.timestamp > bank[addressToCheck].lastTime, "now time < lastTime");
         
         if (bank[addressToCheck].balance <= 0) {
             return (0, 0);
