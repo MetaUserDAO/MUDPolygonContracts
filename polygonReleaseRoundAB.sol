@@ -70,8 +70,8 @@ contract MudABRoundReleaseBank {
             bank[investorAddress].locked = true;
             totalDepositToBeTransferred = totalDepositToBeTransferred + balanceArray[i];
         }
-        require(token.transferFrom(msg.sender, address(this), totalDepositToBeTransferred), "transferFrom failed!"); //check the return value, it should be true
         _depositMappingTotal = _depositMappingTotal + totalDepositToBeTransferred;//to save gas
+        require(token.transferFrom(msg.sender, address(this), totalDepositToBeTransferred), "transferFrom failed!"); //check the return value, it should be true
         
         emit depositMappingEvt(block.timestamp, _depositMappingTotal);
         return (block.timestamp, _depositMappingTotal);
