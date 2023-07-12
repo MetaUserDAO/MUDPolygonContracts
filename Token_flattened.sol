@@ -682,7 +682,7 @@ contract MetaUserDAOToken is ERC20, ERC20Burnable, Ownable {
         _frozen = false;
         creator = msg.sender;
 
-        _mint(msg.sender, 978118023075739);//the real number will be set after eth mainnet token freezed for mapping
+        _mint(msg.sender, 977061247291058);//the real number will be set after eth mainnet token freezed for mapping
     }
 
     //freeze the token tranfer and get ready for main net mapping

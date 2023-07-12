@@ -13,7 +13,7 @@ contract MudMiningPool {
     //this is the address that MUD Mining DAPP used to interact with the daily settlement function
     address constant miningDappAddress = address(0x2de5A24f9A5Ac86F87C37ab5b0Fdd7031E1015A3);   
     uint constant secPerDay = 86400;
-    uint256 constant poolInfoMappingAmountLimit = 433593226348922;//4.5e14;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
+    uint256 constant poolInfoMappingAmountLimit =432474157085699;//4.5e14;//exact number should be retrieved from eth mainnet once the MUD token freezed for mainnet mapping
 
     MetaUserDAOToken token;
     address immutable admin;
@@ -42,7 +42,7 @@ contract MudMiningPool {
         dailyMiningLimit = 100354078820; //100354.078820 MUD per day, within 4 years, so it should be the same as eth mainnet
         //TODO: set the lastHalvingTime, lastSettlementTime, dailyMiningLimit based on eth mainnet data
         lastHalvingTime = 1671518435; //within 4 years, so it should be the same as mining start time of eth mainnet
-        lastSettlementTime = 1686647783;//need to set once the eth mainnet token was frozen
+        lastSettlementTime = 1688452835;//need to set once the eth mainnet token was frozen
     }
     
     function poolInfoMappingDeposit(uint256 amount) external returns (uint256, uint256) {
@@ -189,7 +189,7 @@ contract MudMiningPool {
             }
             emit settlementEvt(batchNumber, amountToBurn, _totalSettlementAmount, _totalFreeAmount); 
             _totalSettlementAmount = 0; //clear for next settlement.
-            _currentSettlementTimestamp = 0; //cl        require(!_frozen, "Freezed for mainnet mapping !");ear time stamp
+            _currentSettlementTimestamp = 0; //clear time stamp
                       
         } else {
             emit settlementEvt(batchNumber, 0, _totalSettlementAmount, _totalFreeAmount); 
